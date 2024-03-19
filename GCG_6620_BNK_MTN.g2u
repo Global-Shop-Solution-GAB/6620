@@ -1,0 +1,137 @@
+Program.Sub.ScreenSU.Start
+Gui.Form..Create(BaseForm)
+Gui.Form..Caption("Bank Account Maintenance")
+Gui.Form..Size(720,125)
+Gui.Form..MinX(0)
+Gui.Form..MinY(0)
+Gui.Form..Position(0,0)
+Gui.Form..AlwaysOnTop(False)
+Gui.Form..FontName("Tahoma")
+Gui.Form..FontSize(8.25)
+Gui.Form..ControlBox(True)
+Gui.Form..MaxButton(True)
+Gui.Form..MinButton(True)
+Gui.Form..MousePointer(0)
+Gui.Form..Moveable(True)
+Gui.Form..Sizeable(True)
+Gui.Form..ShowInTaskBar(True)
+Gui.Form..TitleBar(True)
+Gui.Form..Event(UnLoad,Form_UnLoad)
+Gui.Form.GsGcBank.Create(GsGridControl)
+Gui.Form.GsGcBank.Enabled(True)
+Gui.Form.GsGcBank.Visible(True)
+Gui.Form.GsGcBank.Zorder(0)
+Gui.Form.GsGcBank.Size(710,88)
+Gui.Form.GsGcBank.Position(5,4)
+Gui.Form.GsGcBank.Event(CellValueChanged,GsGcBank_CellValueChanged)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+'ARC#6620
+'Customer: Toolcraft Inc.
+' Feb 2022, Nam Le
+
+'Toolcraft needs an ACH export from GSS in the exact same format for two different banks: First
+'Citizens and Coastal Community
+
+'This script manage the Bank Accounts settings
+
+Program.Sub.Main.Start
+Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+f.Intrinsic.Control.Try
+	v.Local.sSQL.Declare(String)
+	
+	f.ODBC.Connection!Con.OpenCompanyConnection
+	f.Data.Datatable.CreateFromSQL("dtBank", "Con", "select RTRIM(BANK_NAME) BANK_NAME, RTRIM(ROUTING) ROUTING, RTRIM(ACCOUNT_NO) ACCOUNT_NO, RTRIM(EIN) EIN from GCG_6620_BNK_MTN", True)
+	
+	f.Intrinsic.Control.CallSub(CreateAndFormatGrid)
+	gui.Form..Show
+	
+f.Intrinsic.Control.Catch
+	f.Intrinsic.UI.Msgbox(v.Ambient.ErrorDescription)
+f.Intrinsic.Control.Finally
+	f.ODBC.Connection!Con.Close
+Program.Sub.Main.End
+
+'Create and Format Grid Banks
+Program.Sub.CreateAndFormatGrid.Start
+f.Intrinsic.Control.Try
+	
+	gui.Form.GsGcBank.AddGridviewFromDatatable("gvBank", "dtBank")
+	
+	gui.Form.GsGcBank.SetGridviewProperty("gvBank", v.Enum.GridViewPropertyNames!Editable, True)
+	gui.Form.GsGcBank.SetGridviewProperty("gvBank", v.Enum.GridViewPropertyNames!ReadOnly, False)
+	gui.Form.GsGcBank.SetGridviewProperty("gvBank", v.Enum.GridViewPropertyNames!EnableAppearanceEvenRow, True)
+	
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "BANK_NAME", v.Enum.ColumnPropertyNames!Caption, "BANK NAME")
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "ROUTING", v.Enum.ColumnPropertyNames!Caption, "ROUTING NUMBER")
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "ACCOUNT_NO", v.Enum.ColumnPropertyNames!Caption, "BANK ACCOUNT NUMBER")
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "EIN", v.Enum.ColumnPropertyNames!Caption, "EIN")
+	
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "BANK_NAME", v.Enum.ColumnPropertyNames!HeaderFontBold, True)
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "ROUTING", v.Enum.ColumnPropertyNames!HeaderFontBold, True)
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "ACCOUNT_NO", v.Enum.ColumnPropertyNames!HeaderFontBold, True)
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "EIN", v.Enum.ColumnPropertyNames!HeaderFontBold, True)
+	
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "BANK_NAME", v.Enum.ColumnPropertyNames!HeaderHAlignment, "Center")
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "ROUTING", v.Enum.ColumnPropertyNames!HeaderHAlignment, "Center")
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "ACCOUNT_NO", v.Enum.ColumnPropertyNames!HeaderHAlignment, "Center")
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "EIN", v.Enum.ColumnPropertyNames!HeaderHAlignment, "Center")
+	
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "BANK_NAME", v.Enum.ColumnPropertyNames!MinWidth, 140)
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "ROUTING", v.Enum.ColumnPropertyNames!MinWidth, 140)
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "ACCOUNT_NO", v.Enum.ColumnPropertyNames!MinWidth, 140)
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "EIN", v.Enum.ColumnPropertyNames!MinWidth, 140)
+	
+	gui.Form.GsGcBank.SetColumnProperty("gvBank", "BANK_NAME", v.Enum.ColumnPropertyNames!AllowEdit, False)
+	
+	gui.Form.GsGcBank.MainView("gvBank")
+f.Intrinsic.Control.Catch
+	f.Intrinsic.UI.Msgbox(v.Ambient.ErrorDescription)
+f.Intrinsic.Control.EndTry
+Program.Sub.CreateAndFormatGrid.End
+
+Program.Sub.Form_UnLoad.Start
+f.Intrinsic.Control.end
+Program.Sub.Form_UnLoad.End
+
+'update Routing and Account Number when values are changed
+Program.Sub.GsGcBank_CellValueChanged.Start
+f.Intrinsic.Control.Try
+	v.Local.sSQL.Declare(String)
+	v.Local.sBank.Declare(String)
+	v.Local.sRouting.Declare(String)
+	v.Local.sAccount.Declare(String)
+	v.Local.sEIN.Declare(String)
+	
+	f.ODBC.Connection!Con.OpenCompanyConnection
+	gui.Form.GsGcBank.GetCellValueByColumnName("gvBank", "ROUTING", v.Args.RowIndex, v.Local.sRouting)
+	gui.Form.GsGcBank.GetCellValueByColumnName("gvBank", "BANK_NAME", v.Args.RowIndex, v.Local.sBank)
+	gui.Form.GsGcBank.GetCellValueByColumnName("gvBank", "ACCOUNT_NO", v.Args.RowIndex, v.Local.sAccount)
+	gui.Form.GsGcBank.GetCellValueByColumnName("gvBank", "EIN", v.Args.RowIndex, v.Local.sEIN)
+	
+	
+	f.Intrinsic.Control.SelectCase(v.Args.Column)
+		f.Intrinsic.Control.Case("ROUTING")
+			f.Intrinsic.String.Build("update GCG_6620_BNK_MTN set ROUTING='{0}' where RTRIM(BANK_NAME)='{1}'", v.Local.sRouting, v.Local.sBank.Trim, v.Local.sSQL)
+		f.Intrinsic.Control.Case("ACCOUNT_NO")
+			f.Intrinsic.String.Build("update GCG_6620_BNK_MTN set ACCOUNT_NO='{0}' where RTRIM(BANK_NAME)='{1}'", v.Local.sAccount, v.Local.sBank.Trim, v.Local.sSQL)
+		f.Intrinsic.Control.Case("EIN")
+			f.Intrinsic.String.Build("update GCG_6620_BNK_MTN set EIN='{0}' where RTRIM(BANK_NAME)='{1}'", v.Local.sEIN, v.Local.sBank.Trim, v.Local.sSQL)
+	f.Intrinsic.Control.EndSelect
+	
+	f.ODBC.Connection!Con.Execute(v.Local.sSQL)
+	
+f.Intrinsic.Control.Catch
+	f.Intrinsic.UI.Msgbox(v.Ambient.ErrorDescription)
+f.Intrinsic.Control.Finally
+	f.ODBC.Connection!Con.Close
+f.Intrinsic.Control.EndTry
+Program.Sub.GsGcBank_CellValueChanged.End
+
+Program.Sub.Comments.Start
+${$5$}$3.0.0.0$}$1
+${$6$}$nle$}$20220207211633814$}$kjzCRYkA6UEoRnCwndYnRbFO/s06+5AMUhE/qdisMk9sZIqTNM84r6I0cBigiFqG
+Program.Sub.Comments.End
